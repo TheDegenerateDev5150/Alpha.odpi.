@@ -1,8 +1,8 @@
 ODPI-C Release notes
 ====================
 
-Version 6.0.0 (TBD)
--------------------
+Version 6.0.0 (May 4, 2026)
+---------------------------
 
 #)  Dropped support for Oracle Client libraries before 19c.
 #)  Dropped alias for `dpiSodaCollNames` and the function
