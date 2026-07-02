@@ -144,11 +144,9 @@ static int dpiConn__close(dpiConn *conn, uint32_t mode, const char *tag,
     // session if any errors take place
     txnInProgress = 0;
     if (!conn->deadSession && !conn->externalHandle && conn->sessionHandle) {
-        txnInProgress = 1;
-        if (conn->env->versionInfo->versionNum >= 12)
-            dpiOci__attrGet(conn->sessionHandle, DPI_OCI_HTYPE_SESSION,
-                    &txnInProgress, NULL, DPI_OCI_ATTR_TRANSACTION_IN_PROGRESS,
-                    NULL, error);
+        dpiOci__attrGet(conn->sessionHandle, DPI_OCI_HTYPE_SESSION,
+                &txnInProgress, NULL, DPI_OCI_ATTR_TRANSACTION_IN_PROGRESS,
+                NULL, error);
     }
     if (txnInProgress &&
             dpiOci__transRollback(conn, propagateErrors, error) < 0)
@@ -323,9 +321,7 @@ static int dpiConn__close(dpiConn *conn, uint32_t mode, const char *tag,
         // release session
         if (conn->deadSession)
             mode |= DPI_OCI_SESSRLS_DROPSESS;
-        else if (dpiUtils__checkClientVersion(conn->env->versionInfo, 12, 2,
-                NULL) == DPI_SUCCESS && (mode & DPI_MODE_CONN_CLOSE_RETAG) &&
-                tag && tagLength > 0)
+        else if ((mode & DPI_MODE_CONN_CLOSE_RETAG) && tag && tagLength > 0)
             mode |= DPI_OCI_SESSRLS_MULTIPROPERTY_TAG;
         if (dpiOci__sessionRelease(conn, tag, tagLength, mode, propagateErrors,
                 error) < 0)
@@ -640,9 +636,7 @@ static int dpiConn__get(dpiConn *conn, const char *userName,
             mode |= DPI_OCI_SESSGET_CREDPROXY;
         if (createParams->matchAnyTag)
             mode |= DPI_OCI_SESSGET_SPOOL_MATCHANY;
-        if (dpiUtils__checkClientVersion(conn->env->versionInfo, 12, 2,
-                NULL) == DPI_SUCCESS && createParams->tag &&
-                createParams->tagLength > 0)
+        if (createParams->tag && createParams->tagLength > 0)
             mode |= DPI_OCI_SESSGET_MULTIPROPERTY_TAG;
     } else {
         mode = DPI_OCI_SESSGET_STMTCACHE;
@@ -794,28 +788,18 @@ static int dpiConn__getInfo(dpiConn *conn, dpiError *error)
     // determine max identifier length; this is only available with Oracle
     // Client 12.2 and higher; databases older than 12.2 are known to be 30;
     // databases newer than that cannot be determined so zero is used.
-    if (dpiUtils__checkClientVersion(conn->env->versionInfo, 12, 2,
-            NULL) == DPI_SUCCESS) {
-        if (dpiOci__attrGet(conn->handle, DPI_OCI_HTYPE_SVCCTX,
-                &conn->info->maxIdentifierLength, NULL,
-                DPI_OCI_ATTR_MAX_IDENTIFIER_LEN, "get max identifier length",
-                error) < 0)
-            return DPI_FAILURE;
-    } else if (conn->versionInfo.versionNum < 12 ||
-            (conn->versionInfo.versionNum == 12 &&
-            conn->versionInfo.releaseNum < 2)) {
-        conn->info->maxIdentifierLength = 30;
-    }
+    if (dpiOci__attrGet(conn->handle, DPI_OCI_HTYPE_SVCCTX,
+            &conn->info->maxIdentifierLength, NULL,
+            DPI_OCI_ATTR_MAX_IDENTIFIER_LEN, "get max identifier length",
+            error) < 0)
+        return DPI_FAILURE;
 
     // determine max open cursors
-    if (dpiUtils__checkClientVersion(conn->env->versionInfo, 12, 1,
-            NULL) == DPI_SUCCESS) {
-        if (dpiOci__attrGet(conn->sessionHandle, DPI_OCI_HTYPE_SESSION,
-                &conn->info->maxOpenCursors, NULL,
-                DPI_OCI_ATTR_MAX_OPEN_CURSORS, "get max open cursors",
-                error) < 0)
-            return DPI_FAILURE;
-    }
+    if (dpiOci__attrGet(conn->sessionHandle, DPI_OCI_HTYPE_SESSION,
+            &conn->info->maxOpenCursors, NULL,
+            DPI_OCI_ATTR_MAX_OPEN_CURSORS, "get max open cursors",
+            error) < 0)
+        return DPI_FAILURE;
 
     // determine the server type, if possible; it is determined last in order
     // to ensure that only completely cached information is returned
@@ -1056,15 +1040,13 @@ static int dpiConn__getSession(dpiConn *conn, uint32_t mode,
         dpiOci__attrSet(conn->serverHandle, DPI_OCI_HTYPE_SERVER,
                 &conn->pool->pingTimeout, 0, DPI_OCI_ATTR_RECEIVE_TIMEOUT,
                 NULL, error);
-        if (conn->env->versionInfo->versionNum >= 12) {
-            dpiOci__attrGet(conn->serverHandle,
-                    DPI_OCI_HTYPE_SERVER, &savedBreakOnTimeout, NULL,
-                    DPI_OCI_ATTR_BREAK_ON_NET_TIMEOUT, NULL, error);
-            breakOnTimeout = 0;
-            dpiOci__attrSet(conn->serverHandle, DPI_OCI_HTYPE_SERVER,
-                    &breakOnTimeout, 0, DPI_OCI_ATTR_BREAK_ON_NET_TIMEOUT,
-                    NULL, error);
-        }
+        dpiOci__attrGet(conn->serverHandle,
+                DPI_OCI_HTYPE_SERVER, &savedBreakOnTimeout, NULL,
+                DPI_OCI_ATTR_BREAK_ON_NET_TIMEOUT, NULL, error);
+        breakOnTimeout = 0;
+        dpiOci__attrSet(conn->serverHandle, DPI_OCI_HTYPE_SERVER,
+                &breakOnTimeout, 0, DPI_OCI_ATTR_BREAK_ON_NET_TIMEOUT,
+                NULL, error);
 
         // if ping is successful, the connection is valid and can be returned;
         // restore original network parameters
@@ -1072,10 +1054,9 @@ static int dpiConn__getSession(dpiConn *conn, uint32_t mode,
             dpiOci__attrSet(conn->serverHandle, DPI_OCI_HTYPE_SERVER,
                     &savedTimeout, 0, DPI_OCI_ATTR_RECEIVE_TIMEOUT, NULL,
                     error);
-            if (conn->env->versionInfo->versionNum >= 12)
-                dpiOci__attrSet(conn->serverHandle, DPI_OCI_HTYPE_SERVER,
-                        &savedBreakOnTimeout, 0,
-                        DPI_OCI_ATTR_BREAK_ON_NET_TIMEOUT, NULL, error);
+            dpiOci__attrSet(conn->serverHandle, DPI_OCI_HTYPE_SERVER,
+                    &savedBreakOnTimeout, 0,
+                    DPI_OCI_ATTR_BREAK_ON_NET_TIMEOUT, NULL, error);
             break;
         }
 
@@ -1325,11 +1306,6 @@ static int dpiConn__setShardingKey(dpiConn *conn, void **shardingKey,
         dpiError *error)
 {
     uint8_t i;
-
-    // this is only supported on 12.2 and higher clients
-    if (dpiUtils__checkClientVersion(conn->env->versionInfo, 12, 2,
-            error) < 0)
-        return DPI_FAILURE;
 
     // create sharding key descriptor, if necessary
     if (dpiOci__descriptorAlloc(conn->env->handle, shardingKey,
@@ -2002,7 +1978,7 @@ int dpiConn_enqObject(dpiConn *conn, const char *queueName,
 //-----------------------------------------------------------------------------
 // dpiConn_getCallTimeout() [PUBLIC]
 //   Return the call timeout (in milliseconds) used for round-trips to the
-// database. This is only valid in Oracle Client 18c and higher.
+// database.
 //-----------------------------------------------------------------------------
 int dpiConn_getCallTimeout(dpiConn *conn, uint32_t *value)
 {
@@ -2013,9 +1989,6 @@ int dpiConn_getCallTimeout(dpiConn *conn, uint32_t *value)
     if (dpiConn__check(conn, __func__, &error) < 0)
         return dpiGen__endPublicFn(conn, DPI_FAILURE, &error);
     DPI_CHECK_PTR_NOT_NULL(conn, value)
-    if (dpiUtils__checkClientVersion(conn->env->versionInfo, 18, 1,
-            &error) < 0)
-        return dpiGen__endPublicFn(conn, DPI_FAILURE, &error);
 
     // get call timeout
     status = dpiOci__attrGet(conn->handle, DPI_OCI_HTYPE_SVCCTX,
@@ -2214,9 +2187,6 @@ int dpiConn_getMaxOpenCursors(dpiConn *conn, uint32_t *maxOpenCursors)
         return dpiGen__endPublicFn(conn, DPI_FAILURE, &error);
     DPI_CHECK_PTR_NOT_NULL(conn, maxOpenCursors)
 
-    if (dpiUtils__checkClientVersion(conn->env->versionInfo, 12, 1,
-            &error) < 0)
-        return dpiGen__endPublicFn(conn, DPI_FAILURE, &error);
     status = dpiOci__attrGet(conn->sessionHandle, DPI_OCI_HTYPE_SESSION,
             maxOpenCursors, NULL, DPI_OCI_ATTR_MAX_OPEN_CURSORS,
             "get max open cursors", &error);
@@ -2386,9 +2356,6 @@ int dpiConn_getSodaDb(dpiConn *conn, dpiSodaDb **db)
     dpiError error;
 
     if (dpiConn__check(conn, __func__, &error) < 0)
-        return dpiGen__endPublicFn(conn, DPI_FAILURE, &error);
-    if (dpiUtils__checkClientVersion(conn->env->versionInfo, 18, 3,
-            &error) < 0)
         return dpiGen__endPublicFn(conn, DPI_FAILURE, &error);
     if (dpiUtils__checkDatabaseVersion(conn, 18, 0, &error) < 0)
         return dpiGen__endPublicFn(conn, DPI_FAILURE, &error);
@@ -2765,9 +2732,6 @@ int dpiConn_setCallTimeout(dpiConn *conn, uint32_t value)
 
     // validate parameters
     if (dpiConn__check(conn, __func__, &error) < 0)
-        return dpiGen__endPublicFn(conn, DPI_FAILURE, &error);
-    if (dpiUtils__checkClientVersion(conn->env->versionInfo, 18, 1,
-            &error) < 0)
         return dpiGen__endPublicFn(conn, DPI_FAILURE, &error);
 
     // set call timeout

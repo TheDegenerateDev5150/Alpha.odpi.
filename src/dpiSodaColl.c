@@ -1,5 +1,5 @@
 //-----------------------------------------------------------------------------
-// Copyright (c) 2018, 2024, Oracle and/or its affiliates.
+// Copyright (c) 2018, 2026, Oracle and/or its affiliates.
 //
 // This software is dual-licensed to you under the Universal Permissive License
 // (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl and Apache License
@@ -851,11 +851,6 @@ int dpiSodaColl_insertManyWithOptions(dpiSodaColl *coll, uint32_t numDocs,
                 &error) < 0)
             return dpiGen__endPublicFn(coll, DPI_FAILURE, &error);
     }
-
-    // bulk insert is only supported with Oracle Client 18.5+
-    if (dpiUtils__checkClientVersion(coll->env->versionInfo, 18, 5,
-            &error) < 0)
-        return dpiGen__endPublicFn(coll, DPI_FAILURE, &error);
 
     // if options specified and the newly created document is to be returned,
     // create the operation options handle

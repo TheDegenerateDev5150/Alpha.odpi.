@@ -3202,16 +3202,10 @@ int dpiOci__serverRelease(dpiConn *conn, char *buffer, uint32_t bufferSize,
     int status;
 
     DPI_OCI_ENSURE_ERROR_HANDLE(error)
-    if (conn->env->versionInfo->versionNum < 18) {
-        DPI_OCI_LOAD_SYMBOL("OCIServerRelease", dpiOciSymbols.fnServerRelease)
-        status = (*dpiOciSymbols.fnServerRelease)(conn->handle, error->handle,
-                buffer, bufferSize, DPI_OCI_HTYPE_SVCCTX, version);
-    } else {
-        DPI_OCI_LOAD_SYMBOL("OCIServerRelease2",
-                dpiOciSymbols.fnServerRelease2)
-        status = (*dpiOciSymbols.fnServerRelease2)(conn->handle, error->handle,
-                buffer, bufferSize, DPI_OCI_HTYPE_SVCCTX, version, mode);
-    }
+    DPI_OCI_LOAD_SYMBOL("OCIServerRelease2",
+            dpiOciSymbols.fnServerRelease2)
+    status = (*dpiOciSymbols.fnServerRelease2)(conn->handle, error->handle,
+            buffer, bufferSize, DPI_OCI_HTYPE_SVCCTX, version, mode);
     DPI_OCI_CHECK_AND_RETURN(error, status, conn, "get server version");
 }
 
@@ -3984,17 +3978,13 @@ int dpiOci__stmtGetNextResult(dpiStmt *stmt, void **handle, dpiError *error)
 int dpiOci__stmtPrepare2(dpiStmt *stmt, const char *sql, uint32_t sqlLength,
         const char *tag, uint32_t tagLength, dpiError *error)
 {
-    uint32_t mode = DPI_OCI_DEFAULT;
     int status;
 
     DPI_OCI_LOAD_SYMBOL("OCIStmtPrepare2", dpiOciSymbols.fnStmtPrepare2)
     DPI_OCI_ENSURE_ERROR_HANDLE(error)
-    if (dpiUtils__checkClientVersion(stmt->env->versionInfo, 12, 2,
-            NULL) == DPI_SUCCESS)
-        mode |= DPI_OCI_PREP2_GET_SQL_ID;
     status = (*dpiOciSymbols.fnStmtPrepare2)(stmt->conn->handle, &stmt->handle,
             error->handle, sql, sqlLength, tag, tagLength, DPI_OCI_NTV_SYNTAX,
-            mode);
+            DPI_OCI_PREP2_GET_SQL_ID);
     if (DPI_OCI_ERROR_OCCURRED(status)) {
         stmt->handle = NULL;
         return dpiError__setFromOCI(error, status, stmt->conn, "prepare SQL");

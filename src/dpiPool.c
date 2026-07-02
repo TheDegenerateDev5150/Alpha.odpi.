@@ -1,5 +1,5 @@
 //-----------------------------------------------------------------------------
-// Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+// Copyright (c) 2016, 2026, Oracle and/or its affiliates.
 //
 // This software is dual-licensed to you under the Universal Permissive License
 // (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl and Apache License
@@ -174,9 +174,6 @@ static int dpiPool__create(dpiPool *pool, const char *userName,
     // set PL/SQL session state fixup callback, if applicable
     if (createParams->plsqlFixupCallback &&
             createParams->plsqlFixupCallbackLength > 0) {
-        if (dpiUtils__checkClientVersion(pool->env->versionInfo, 12, 2,
-                error) < 0)
-            return DPI_FAILURE;
         if (dpiOci__attrSet(authInfo, DPI_OCI_HTYPE_AUTHINFO,
                     (void*) createParams->plsqlFixupCallback,
                     createParams->plsqlFixupCallbackLength,
@@ -202,35 +199,25 @@ static int dpiPool__create(dpiPool *pool, const char *userName,
             "set timeout", error) < 0)
         return DPI_FAILURE;
 
-    // set the wait timeout on the pool (valid in 12.2 and higher)
-    if (pool->env->versionInfo->versionNum > 12 ||
-            (pool->env->versionInfo->versionNum == 12 &&
-             pool->env->versionInfo->releaseNum >= 2)) {
-        if (dpiOci__attrSet(pool->handle, DPI_OCI_HTYPE_SPOOL, (void*)
-                &createParams->waitTimeout, 0, DPI_OCI_ATTR_SPOOL_WAIT_TIMEOUT,
-                "set wait timeout", error) < 0)
-            return DPI_FAILURE;
-    }
+    // set the wait timeout on the pool
+    if (dpiOci__attrSet(pool->handle, DPI_OCI_HTYPE_SPOOL, (void*)
+            &createParams->waitTimeout, 0, DPI_OCI_ATTR_SPOOL_WAIT_TIMEOUT,
+            "set wait timeout", error) < 0)
+        return DPI_FAILURE;
 
-    // set the maximum lifetime session on the pool (valid in 12.1 and higher)
-    if (pool->env->versionInfo->versionNum >= 12) {
-        if (dpiOci__attrSet(pool->handle, DPI_OCI_HTYPE_SPOOL, (void*)
-                &createParams->maxLifetimeSession, 0,
-                DPI_OCI_ATTR_SPOOL_MAX_LIFETIME_SESSION,
-                "set max lifetime session", error) < 0)
-            return DPI_FAILURE;
-    }
+    // set the maximum lifetime session on the pool
+    if (dpiOci__attrSet(pool->handle, DPI_OCI_HTYPE_SPOOL, (void*)
+            &createParams->maxLifetimeSession, 0,
+            DPI_OCI_ATTR_SPOOL_MAX_LIFETIME_SESSION,
+            "set max lifetime session", error) < 0)
+        return DPI_FAILURE;
 
-    // set the maximum number of sessions per shard (valid in 18.3 and higher)
-    if (pool->env->versionInfo->versionNum > 18 ||
-            (pool->env->versionInfo->versionNum == 18 &&
-             pool->env->versionInfo->releaseNum >= 3)) {
-        if (dpiOci__attrSet(pool->handle, DPI_OCI_HTYPE_SPOOL, (void*)
-                &createParams->maxSessionsPerShard, 0,
-                DPI_OCI_ATTR_SPOOL_MAX_PER_SHARD,
-                "set max sessions per shard", error) < 0)
-            return DPI_FAILURE;
-    }
+    // set the maximum number of sessions per shard
+    if (dpiOci__attrSet(pool->handle, DPI_OCI_HTYPE_SPOOL, (void*)
+            &createParams->maxSessionsPerShard, 0,
+            DPI_OCI_ATTR_SPOOL_MAX_PER_SHARD,
+            "set max sessions per shard", error) < 0)
+        return DPI_FAILURE;
 
     // create pool
     if (dpiOci__sessionPoolCreate(pool, connectString, connectStringLength,
@@ -308,24 +295,12 @@ static int dpiPool__getAttributeUint(dpiPool *pool, uint32_t attribute,
     DPI_CHECK_PTR_NOT_NULL(pool, value)
     switch (attribute) {
         case DPI_OCI_ATTR_SPOOL_MAX_LIFETIME_SESSION:
-            if (dpiUtils__checkClientVersion(pool->env->versionInfo, 12, 1,
-                    &error) < 0)
-                return dpiGen__endPublicFn(pool, DPI_FAILURE, &error);
-            break;
         case DPI_OCI_ATTR_SPOOL_WAIT_TIMEOUT:
-            if (dpiUtils__checkClientVersion(pool->env->versionInfo, 12, 2,
-                    &error) < 0)
-                return dpiGen__endPublicFn(pool, DPI_FAILURE, &error);
-            break;
         case DPI_OCI_ATTR_SPOOL_BUSY_COUNT:
         case DPI_OCI_ATTR_SPOOL_OPEN_COUNT:
         case DPI_OCI_ATTR_SPOOL_STMTCACHESIZE:
         case DPI_OCI_ATTR_SPOOL_TIMEOUT:
-            break;
         case DPI_OCI_ATTR_SPOOL_MAX_PER_SHARD:
-            if (dpiUtils__checkClientVersion(pool->env->versionInfo, 18, 3,
-                    &error) < 0)
-                return dpiGen__endPublicFn(pool, DPI_FAILURE, &error);
             break;
         default:
             dpiError__set(&error, "get attribute value",
@@ -361,22 +336,10 @@ static int dpiPool__setAttributeUint(dpiPool *pool, uint32_t attribute,
             ociValue = &shortValue;
             break;
         case DPI_OCI_ATTR_SPOOL_MAX_LIFETIME_SESSION:
-            if (dpiUtils__checkClientVersion(pool->env->versionInfo, 12, 1,
-                    &error) < 0)
-                return dpiGen__endPublicFn(pool, DPI_FAILURE, &error);
-            break;
         case DPI_OCI_ATTR_SPOOL_WAIT_TIMEOUT:
-            if (dpiUtils__checkClientVersion(pool->env->versionInfo, 12, 2,
-                    &error) < 0)
-                return dpiGen__endPublicFn(pool, DPI_FAILURE, &error);
-            break;
         case DPI_OCI_ATTR_SPOOL_STMTCACHESIZE:
         case DPI_OCI_ATTR_SPOOL_TIMEOUT:
-            break;
         case DPI_OCI_ATTR_SPOOL_MAX_PER_SHARD:
-            if (dpiUtils__checkClientVersion(pool->env->versionInfo, 18, 3,
-                    &error) < 0)
-                return dpiGen__endPublicFn(pool, DPI_FAILURE, &error);
             break;
         default:
             dpiError__set(&error, "set attribute value",
