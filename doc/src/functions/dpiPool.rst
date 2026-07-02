@@ -121,7 +121,9 @@ connections by calling the function :func:`dpiPool_acquireConnection()`.
           - The name of the user used for authenticating sessions, as a byte
             string in the encoding used for CHAR data. NULL is also acceptable
             if external authentication is being requested or if a heterogeneous
-            pool is being created.
+            pool is being created. When using token based authentication, this
+            can be set to a proxy user enclosed in square brackets, such as
+            ``[proxy_user]``.
         * - ``userNameLength``
           - IN
           - The length of the userName parameter, in bytes, or 0 if the

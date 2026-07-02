@@ -205,7 +205,9 @@ handles.
           - The name of the user used for authenticating the user, as a byte
             string in the encoding used for CHAR data. NULL is also acceptable
             if external authentication is being requested or if credentials
-            were specified when the pool was created.
+            were specified when the pool was created. When using token based
+            authentication, this can be set to a proxy user enclosed in square
+            brackets, such as ``[proxy_user]``.
         * - ``userNameLength``
           - IN
           - The length of the userName parameter, in bytes, or 0 if the

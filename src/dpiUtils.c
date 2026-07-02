@@ -1,5 +1,5 @@
 //-----------------------------------------------------------------------------
-// Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+// Copyright (c) 2016, 2026, Oracle and/or its affiliates.
 //
 // This software is dual-licensed to you under the Universal Permissive License
 // (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl and Apache License
@@ -87,6 +87,44 @@ int dpiUtils__checkClientVersionMulti(dpiVersionInfo *versionInfo,
                 DPI_ERR_ORACLE_CLIENT_TOO_OLD_MULTI, versionInfo->versionNum,
                 versionInfo->releaseNum, minVersionNum1, minReleaseNum1,
                 minVersionNum2, minReleaseNum2);
+    return DPI_SUCCESS;
+}
+
+
+//-----------------------------------------------------------------------------
+// dpiUtils__checkCredentials() [INTERNAL]
+//   Check the supplied credentials and populate the structure for ease of
+// handling them in the subsequent calls.
+//-----------------------------------------------------------------------------
+int dpiUtils__checkCredentials(const char *userName, uint32_t userNameLength,
+        const char *password, uint32_t passwordLength, int externalAuth,
+        dpiCredentials *credentials, dpiError *error)
+{
+    // initialize structure
+    credentials->userName = (userNameLength == 0) ? NULL : userName;
+    credentials->userNameLength = userNameLength;
+    credentials->password = (passwordLength == 0) ? NULL : password;
+    credentials->passwordLength = passwordLength;
+    credentials->proxyUserName = NULL;
+    credentials->proxyUserNameLength = 0;
+
+    // validate credentials
+    if (externalAuth && password && passwordLength > 0)
+        return dpiError__set(error, "check mixed credentials",
+                DPI_ERR_EXT_AUTH_WITH_CREDENTIALS);
+    if (externalAuth && userName && userNameLength > 0) {
+        if (userNameLength < 3 || userName[0] != '[' ||
+                userName[userNameLength - 1] != ']') {
+            return dpiError__set(error,
+                    "verify proxy user name with external auth",
+                    DPI_ERR_EXT_AUTH_INVALID_PROXY);
+        }
+        credentials->proxyUserName = userName + 1;
+        credentials->proxyUserNameLength = userNameLength - 2;
+        credentials->userName = NULL;
+        credentials->userNameLength = 0;
+    }
+
     return DPI_SUCCESS;
 }
 
@@ -525,7 +563,6 @@ int dpiUtils__setAttributesFromCommonCreateParams(void *handle,
 
     return DPI_SUCCESS;
 }
-
 
 
 //-----------------------------------------------------------------------------

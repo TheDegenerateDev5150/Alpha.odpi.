@@ -33,9 +33,9 @@
 // dpiPool__acquireConnection() [INTERNAL]
 //   Internal method used for acquiring a connection from a pool.
 //-----------------------------------------------------------------------------
-int dpiPool__acquireConnection(dpiPool *pool, const char *userName,
-        uint32_t userNameLength, const char *password, uint32_t passwordLength,
-        dpiConnCreateParams *params, dpiConn **conn, dpiError *error)
+int dpiPool__acquireConnection(dpiPool *pool,
+        const dpiCredentials *credentials, dpiConnCreateParams *params,
+        dpiConn **conn, dpiError *error)
 {
     dpiConn *tempConn;
 
@@ -46,9 +46,8 @@ int dpiPool__acquireConnection(dpiPool *pool, const char *userName,
     error->env = pool->env;
 
     // create the connection
-    if (dpiConn__create(tempConn, pool->env->context, userName, userNameLength,
-            password, passwordLength, pool->name, pool->nameLength, pool,
-            NULL, params, error) < 0) {
+    if (dpiConn__create(tempConn, pool->env->context, credentials,
+            pool->name, pool->nameLength, pool, NULL, params, error) < 0) {
         dpiConn__free(tempConn, error);
         return DPI_FAILURE;
     }
@@ -106,8 +105,7 @@ int dpiPool__accessTokenCallback(dpiPool *pool, void *authInfo,
 // dpiPool__create() [INTERNAL]
 //   Internal method for creating a session pool.
 //-----------------------------------------------------------------------------
-static int dpiPool__create(dpiPool *pool, const char *userName,
-        uint32_t userNameLength, const char *password, uint32_t passwordLength,
+static int dpiPool__create(dpiPool *pool, const dpiCredentials *credentials,
         const char *connectString, uint32_t connectStringLength,
         const dpiCommonCreateParams *commonParams,
         dpiPoolCreateParams *createParams, dpiError *error)
@@ -116,13 +114,6 @@ static int dpiPool__create(dpiPool *pool, const char *userName,
     uint32_t poolMode;
     uint8_t getMode;
     void *authInfo;
-
-    // validate parameters
-    if (createParams->externalAuth &&
-            ((userName && userNameLength > 0) ||
-             (password && passwordLength > 0)))
-        return dpiError__set(error, "check mixed credentials",
-                DPI_ERR_EXT_AUTH_WITH_CREDENTIALS);
 
     // create the session pool handle
     if (dpiOci__handleAlloc(pool->env->handle, &pool->handle,
@@ -153,7 +144,8 @@ static int dpiPool__create(dpiPool *pool, const char *userName,
                     DPI_ERR_POOL_TOKEN_BASED_AUTH);
 
         if (dpiUtils__setAccessTokenAttributes(authInfo,
-                commonParams->accessToken, pool->env->versionInfo, error) < 0)
+                commonParams->accessToken, pool->env->versionInfo,
+                error) < 0)
             return DPI_FAILURE;
 
         if (createParams->accessTokenCallback) {
@@ -222,8 +214,9 @@ static int dpiPool__create(dpiPool *pool, const char *userName,
     // create pool
     if (dpiOci__sessionPoolCreate(pool, connectString, connectStringLength,
             createParams->minSessions, createParams->maxSessions,
-            createParams->sessionIncrement, userName, userNameLength, password,
-            passwordLength, poolMode, error) < 0)
+            createParams->sessionIncrement, credentials->userName,
+            credentials->userNameLength, credentials->password,
+            credentials->passwordLength, poolMode, error) < 0)
         return DPI_FAILURE;
 
     // set the statement cache size
@@ -363,6 +356,7 @@ int dpiPool_acquireConnection(dpiPool *pool, const char *userName,
         dpiConnCreateParams *params, dpiConn **conn)
 {
     dpiConnCreateParams localParams;
+    dpiCredentials credentials;
     dpiError error;
     int status;
 
@@ -379,17 +373,13 @@ int dpiPool_acquireConnection(dpiPool *pool, const char *userName,
         params = &localParams;
     }
 
-    // the username must be enclosed within [] if external authentication
-    // with proxy is desired
-    if (pool->externalAuth && userName && userNameLength > 0 &&
-            (userName[0] != '[' || userName[userNameLength - 1] != ']')) {
-        dpiError__set(&error, "verify proxy user name with external auth",
-                DPI_ERR_EXT_AUTH_INVALID_PROXY);
-        return dpiGen__endPublicFn(pool, DPI_FAILURE, &error );
-    }
+    // validate credentials
+    if (dpiUtils__checkCredentials(userName, userNameLength, password,
+            passwordLength, pool->externalAuth, &credentials, &error) < 0)
+        return dpiGen__endPublicFn(pool, DPI_FAILURE, &error);
 
-    status = dpiPool__acquireConnection(pool, userName, userNameLength,
-            password, passwordLength, params, conn, &error);
+    status = dpiPool__acquireConnection(pool, &credentials, params, conn,
+            &error);
     return dpiGen__endPublicFn(pool, status, &error);
 }
 
@@ -432,6 +422,7 @@ int dpiPool_create(const dpiContext *context, const char *userName,
 {
     dpiCommonCreateParams localCommonParams;
     dpiPoolCreateParams localCreateParams;
+    dpiCredentials credentials;
     dpiPool *tempPool;
     dpiError error;
 
@@ -454,6 +445,21 @@ int dpiPool_create(const dpiContext *context, const char *userName,
         createParams = &localCreateParams;
     }
 
+    // usernames and passwords cannot be supplied when using external
+    // authentication with pools, regardless of whether token auth is used
+    if (createParams->externalAuth &&
+            (userNameLength > 0 || passwordLength > 0)) {
+        dpiError__set(&error, "check mixed credentials",
+                DPI_ERR_EXT_AUTH_WITH_CREDENTIALS);
+        return dpiGen__endPublicFn(context, DPI_FAILURE, &error);
+    }
+
+    // validate credentials
+    if (dpiUtils__checkCredentials(userName, userNameLength, password,
+            passwordLength, createParams->externalAuth, &credentials,
+            &error) < 0)
+        return dpiGen__endPublicFn(context, DPI_FAILURE, &error);
+
     // allocate memory for pool
     if (dpiGen__allocate(DPI_HTYPE_POOL, NULL, (void**) &tempPool, &error) < 0)
         return dpiGen__endPublicFn(context, DPI_FAILURE, &error);
@@ -466,9 +472,8 @@ int dpiPool_create(const dpiContext *context, const char *userName,
     }
 
     // perform remaining steps required to create pool
-    if (dpiPool__create(tempPool, userName, userNameLength, password,
-            passwordLength, connectString, connectStringLength, commonParams,
-            createParams, &error) < 0) {
+    if (dpiPool__create(tempPool, &credentials, connectString,
+            connectStringLength, commonParams, createParams, &error) < 0) {
         dpiPool__free(tempPool, &error);
         return dpiGen__endPublicFn(context, DPI_FAILURE, &error);
     }

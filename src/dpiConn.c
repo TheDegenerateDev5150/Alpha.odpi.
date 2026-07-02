@@ -33,13 +33,12 @@
 // forward declarations of internal functions only used in this file
 static int dpiConn__attachExternal(dpiConn *conn, void *externalHandle,
         dpiError *error);
-static int dpiConn__createStandalone(dpiConn *conn, const char *userName,
-        uint32_t userNameLength, const char *password, uint32_t passwordLength,
-        const char *connectString, uint32_t connectStringLength,
+static int dpiConn__createStandalone(dpiConn *conn,
+        const dpiCredentials *credentials, const char *connectString,
+        uint32_t connectStringLength,
         const dpiCommonCreateParams *commonParams,
         const dpiConnCreateParams *createParams, dpiError *error);
-static int dpiConn__get(dpiConn *conn, const char *userName,
-        uint32_t userNameLength, const char *password, uint32_t passwordLength,
+static int dpiConn__get(dpiConn *conn, const dpiCredentials *credentials,
         const char *connectString, uint32_t connectStringLength,
         const dpiCommonCreateParams *commonParams,
         dpiConnCreateParams *createParams, dpiPool *pool, dpiError *error);
@@ -49,8 +48,7 @@ static int dpiConn__getSession(dpiConn *conn, uint32_t mode,
         const char *connectString, uint32_t connectStringLength,
         dpiConnCreateParams *params, void *authInfo, dpiError *error);
 static int dpiConn__setAttributesFromCreateParams(dpiConn *conn, void *handle,
-        uint32_t handleType, const char *userName, uint32_t userNameLength,
-        const char *password, uint32_t passwordLength,
+        uint32_t handleType, const dpiCredentials *credentials,
         const dpiCommonCreateParams *commonParams,
         const dpiConnCreateParams *params, int *used, dpiError *error);
 static int dpiConn__setShardingKey(dpiConn *conn, void **shardingKey,
@@ -369,8 +367,7 @@ int dpiConn__commit(dpiConn *conn, dpiError *error)
 //   Perform internal initialization of the connection.
 //-----------------------------------------------------------------------------
 int dpiConn__create(dpiConn *conn, const dpiContext *context,
-        const char *userName, uint32_t userNameLength, const char *password,
-        uint32_t passwordLength, const char *connectString,
+        const dpiCredentials *credentials, const char *connectString,
         uint32_t connectStringLength, dpiPool *pool,
         const dpiCommonCreateParams *commonParams,
         dpiConnCreateParams *createParams, dpiError *error)
@@ -427,13 +424,11 @@ int dpiConn__create(dpiConn *conn, const dpiContext *context,
             createParams->connectionClassLength > 0) ||
             createParams->shardingKeyColumns ||
             createParams->superShardingKeyColumns) {
-        status = dpiConn__get(conn, userName, userNameLength, password,
-                passwordLength, connectString, connectStringLength,
-                commonParams, createParams, pool, error);
+        status = dpiConn__get(conn, credentials, connectString,
+                connectStringLength, commonParams, createParams, pool, error);
     } else {
-        status = dpiConn__createStandalone(conn, userName, userNameLength,
-                password, passwordLength, connectString, connectStringLength,
-                commonParams, createParams, error);
+        status = dpiConn__createStandalone(conn, credentials, connectString,
+                connectStringLength, commonParams, createParams, error);
     }
 
     // mark connection as no longer being created so that subsequent errors
@@ -449,9 +444,9 @@ int dpiConn__create(dpiConn *conn, const dpiContext *context,
 //   Create a standalone connection to the database using the parameters
 // specified.
 //-----------------------------------------------------------------------------
-static int dpiConn__createStandalone(dpiConn *conn, const char *userName,
-        uint32_t userNameLength, const char *password, uint32_t passwordLength,
-        const char *connectString, uint32_t connectStringLength,
+static int dpiConn__createStandalone(dpiConn *conn,
+        const dpiCredentials *credentials, const char *connectString,
+        uint32_t connectStringLength,
         const dpiCommonCreateParams *commonParams,
         const dpiConnCreateParams *createParams, dpiError *error)
 {
@@ -501,8 +496,8 @@ static int dpiConn__createStandalone(dpiConn *conn, const char *userName,
 
     // populate attributes on the session handle
     if (dpiConn__setAttributesFromCreateParams(conn, conn->sessionHandle,
-            DPI_OCI_HTYPE_SESSION, userName, userNameLength, password,
-            passwordLength, commonParams, createParams, &used, error) < 0)
+            DPI_OCI_HTYPE_SESSION, credentials, commonParams, createParams,
+            &used, error) < 0)
         return DPI_FAILURE;
 
     // set the session handle on the service context handle
@@ -527,8 +522,9 @@ static int dpiConn__createStandalone(dpiConn *conn, const char *userName,
             authMode |= DPI_OCI_CPW_SYSDGD;
         if (createParams->authMode & DPI_MODE_AUTH_SYSKMT)
             authMode |= DPI_OCI_CPW_SYSKMT;
-        return dpiOci__passwordChange(conn, userName, userNameLength, password,
-                passwordLength, createParams->newPassword,
+        return dpiOci__passwordChange(conn, credentials->userName,
+                credentials->userNameLength, credentials->password,
+                credentials->passwordLength, createParams->newPassword,
                 createParams->newPasswordLength, authMode, error);
     }
 
@@ -603,8 +599,7 @@ void dpiConn__free(dpiConn *conn, dpiError *error)
 // method uses the simplified OCI session creation protocol which is required
 // when using pools and session tagging.
 //-----------------------------------------------------------------------------
-static int dpiConn__get(dpiConn *conn, const char *userName,
-        uint32_t userNameLength, const char *password, uint32_t passwordLength,
+static int dpiConn__get(dpiConn *conn, const dpiCredentials *credentials,
         const char *connectString, uint32_t connectStringLength,
         const dpiCommonCreateParams *commonParams,
         dpiConnCreateParams *createParams, dpiPool *pool, dpiError *error)
@@ -614,25 +609,19 @@ static int dpiConn__get(dpiConn *conn, const char *userName,
     uint32_t mode;
     int used = 0;
 
-    // clear pointers if length is 0
-    if (userNameLength == 0)
-        userName = NULL;
-    if (passwordLength == 0)
-        password = NULL;
-
     // set things up for the call to acquire a session
     if (pool) {
         dpiGen__setRefCount(pool, error, 1);
         conn->pool = pool;
         mode = DPI_OCI_SESSGET_SPOOL;
         externalAuth = pool->externalAuth;
-        if (userName && pool->homogeneous)
+        if (credentials->userName && pool->homogeneous)
             return dpiError__set(error, "check proxy", DPI_ERR_INVALID_PROXY);
 
         // if the userName is provided but no password is provided and external
         // authentication is not being used, proxy authentication is taking
         // place
-        if (userName && !password && !externalAuth)
+        if (credentials->userName && !credentials->password && !externalAuth)
             mode |= DPI_OCI_SESSGET_CREDPROXY;
         if (createParams->matchAnyTag)
             mode |= DPI_OCI_SESSGET_SPOOL_MATCHANY;
@@ -654,8 +643,8 @@ static int dpiConn__get(dpiConn *conn, const char *userName,
 
     // set attributes for create parameters
     if (dpiConn__setAttributesFromCreateParams(conn, authInfo,
-            DPI_OCI_HTYPE_AUTHINFO, userName, userNameLength, password,
-            passwordLength, commonParams, createParams, &used, error) < 0) {
+            DPI_OCI_HTYPE_AUTHINFO, credentials, commonParams, createParams,
+            &used, error) < 0) {
         dpiOci__handleFree(authInfo, DPI_OCI_HTYPE_AUTHINFO);
         return DPI_FAILURE;
     }
@@ -1175,8 +1164,7 @@ static int dpiConn__setAppContext(void *handle, uint32_t handleType,
 // create parameters specified.
 //-----------------------------------------------------------------------------
 static int dpiConn__setAttributesFromCreateParams(dpiConn *conn, void *handle,
-        uint32_t handleType, const char *userName, uint32_t userNameLength,
-        const char *password, uint32_t passwordLength,
+        uint32_t handleType, const dpiCredentials *credentials,
         const dpiCommonCreateParams *commonParams,
         const dpiConnCreateParams *params, int *used, dpiError *error)
 {
@@ -1188,17 +1176,25 @@ static int dpiConn__setAttributesFromCreateParams(dpiConn *conn, void *handle,
         *used = 1;
 
     // set credentials
-    if (userName && userNameLength > 0) {
-        if (dpiOci__attrSet(handle, handleType, (void*) userName,
-                userNameLength, DPI_OCI_ATTR_USERNAME, "set user name",
-                error) < 0)
+    if (credentials->userName) {
+        if (dpiOci__attrSet(handle, handleType, (void*) credentials->userName,
+                credentials->userNameLength, DPI_OCI_ATTR_USERNAME,
+                "set user name", error) < 0)
             return DPI_FAILURE;
         *used = 1;
     }
-    if (password && passwordLength > 0) {
-        if (dpiOci__attrSet(handle, handleType, (void*) password,
-                passwordLength, DPI_OCI_ATTR_PASSWORD, "set password",
-                error) < 0)
+    if (credentials->password) {
+        if (dpiOci__attrSet(handle, handleType, (void*) credentials->password,
+                credentials->passwordLength, DPI_OCI_ATTR_PASSWORD,
+                "set password", error) < 0)
+            return DPI_FAILURE;
+        *used = 1;
+    }
+    if (credentials->proxyUserName) {
+        if (dpiOci__attrSet(handle, handleType,
+                (void*) credentials->proxyUserName,
+                credentials->proxyUserNameLength, DPI_OCI_ATTR_PROXY_CLIENT,
+                "set proxy client", error) < 0)
             return DPI_FAILURE;
         *used = 1;
     }
@@ -1797,6 +1793,7 @@ int dpiConn_create(const dpiContext *context, const char *userName,
 {
     dpiCommonCreateParams localCommonParams;
     dpiConnCreateParams localCreateParams;
+    dpiCredentials credentials;
     dpiConn *tempConn;
     dpiError error;
     int status;
@@ -1820,33 +1817,17 @@ int dpiConn_create(const dpiContext *context, const char *userName,
         createParams = &localCreateParams;
     }
 
-    // password must not be specified if external authentication is desired
-    if (createParams->externalAuth && password && passwordLength > 0) {
-        dpiError__set(&error, "verify no password with external auth",
-                DPI_ERR_EXT_AUTH_WITH_CREDENTIALS);
+    // validate credentials
+    if (dpiUtils__checkCredentials(userName, userNameLength, password,
+            passwordLength, createParams->externalAuth, &credentials,
+            &error) < 0)
         return dpiGen__endPublicFn(context, DPI_FAILURE, &error);
-    }
 
-    // the username must be enclosed within [] if external authentication
-    // with proxy is desired
-    if (createParams->externalAuth && userName && userNameLength > 0 &&
-            (userName[0] != '[' || userName[userNameLength - 1] != ']')) {
-        dpiError__set(&error, "verify proxy user name with external auth",
-                DPI_ERR_EXT_AUTH_INVALID_PROXY);
-        return dpiGen__endPublicFn(context, DPI_FAILURE, &error );
-    }
-
-    if (commonParams->accessToken) {
-
-        // externalAuth must be set to true for token based authentication
-        if (!createParams->externalAuth)
-            return dpiError__set(&error, "check externalAuth value",
-                    DPI_ERR_STANDALONE_TOKEN_BASED_AUTH);
-
-        // cannot set username for token based authentication
-        if (userName && userNameLength > 0)
-            return dpiError__set(&error, "verify user in token based auth",
-                DPI_ERR_EXT_AUTH_WITH_CREDENTIALS);
+    // externalAuth must be set to true for token based authentication
+    if (commonParams->accessToken && !createParams->externalAuth) {
+        dpiError__set(&error, "check externalAuth value",
+                DPI_ERR_STANDALONE_TOKEN_BASED_AUTH);
+        return dpiGen__endPublicFn(context, DPI_FAILURE, &error);
     }
 
     // connectionClass and edition cannot be specified at the same time
@@ -1875,18 +1856,17 @@ int dpiConn_create(const dpiContext *context, const char *userName,
             dpiError__set(&error, "check pool", DPI_ERR_NOT_CONNECTED);
             return dpiGen__endPublicFn(context, DPI_FAILURE, &error);
         }
-        status = dpiPool__acquireConnection(createParams->pool, userName,
-                userNameLength, password, passwordLength, createParams, conn,
-                &error);
+        status = dpiPool__acquireConnection(createParams->pool, &credentials,
+                createParams, conn, &error);
         return dpiGen__endPublicFn(context, status, &error);
     }
 
     // create connection
     if (dpiGen__allocate(DPI_HTYPE_CONN, NULL, (void**) &tempConn, &error) < 0)
         return dpiGen__endPublicFn(context, DPI_FAILURE, &error);
-    if (dpiConn__create(tempConn, context, userName, userNameLength,
-            password, passwordLength, connectString, connectStringLength,
-            NULL, commonParams, createParams, &error) < 0) {
+    if (dpiConn__create(tempConn, context, &credentials, connectString,
+            connectStringLength, NULL, commonParams, createParams,
+            &error) < 0) {
         dpiConn__free(tempConn, &error);
         return dpiGen__endPublicFn(context, DPI_FAILURE, &error);
     }

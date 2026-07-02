@@ -780,6 +780,40 @@ int dpiTest_1218(dpiTestCase *testCase, dpiTestParams *params)
 
 
 //-----------------------------------------------------------------------------
+// dpiTest_1219()
+//   Verify that token based authentication with an empty proxy user name fails
+// with the expected error.
+//-----------------------------------------------------------------------------
+int dpiTest_1219(dpiTestCase *testCase, dpiTestParams *params)
+{
+    const char *emptyProxyUserName = "[]";
+    const char *token = "token";
+    dpiCommonCreateParams commonParams;
+    dpiConnCreateParams createParams;
+    dpiAccessToken accessToken;
+    dpiContext *context;
+    dpiConn *conn;
+
+    dpiTestSuite_getContext(&context);
+    if (dpiContext_initCommonCreateParams(context, &commonParams) < 0)
+        return dpiTestCase_setFailedFromError(testCase);
+    if (dpiContext_initConnCreateParams(context, &createParams) < 0)
+        return dpiTestCase_setFailedFromError(testCase);
+
+    memset(&accessToken, 0, sizeof(accessToken));
+    accessToken.token = token;
+    accessToken.tokenLength = strlen(token);
+    commonParams.accessToken = &accessToken;
+    createParams.externalAuth = 1;
+
+    dpiConn_create(context, emptyProxyUserName, strlen(emptyProxyUserName),
+            NULL, 0, params->connectString, params->connectStringLength,
+            &commonParams, &createParams, &conn);
+    return dpiTestCase_expectError(testCase, "DPI-1069:");
+}
+
+
+//-----------------------------------------------------------------------------
 // main()
 //-----------------------------------------------------------------------------
 int main(int argc, char **argv)
@@ -823,5 +857,7 @@ int main(int argc, char **argv)
             "verify dpiConn_setCallTimeout()/dpiConn_getCallTimeout()");
     dpiTestSuite_addCase(dpiTest_1218,
             "verify dpiConn_create() fails with ORA error during conn failure");
+    dpiTestSuite_addCase(dpiTest_1219,
+            "token auth with empty proxy user name fails");
     return dpiTestSuite_run();
 }
