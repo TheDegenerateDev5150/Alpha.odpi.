@@ -6,6 +6,11 @@ Version 6.1.0 (TBD)
 
 #)  Added support for using proxy users with token authentication for
     standalone connections.
+#)  The symbolic link for `libclntsh.so` or `libclntsh.dylib` is now mandatory
+    when loading ODPI-C and attempts will no longer be made to load versioned
+    libraries. On Linux, determine the real path of any specified library so
+    that libraries with `RPATH=$ORIGIN` will load successfully, even when a
+    symbolic link is used.
 
 
 Version 6.0.0 (May 4, 2026)
