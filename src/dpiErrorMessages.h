@@ -68,6 +68,7 @@ static const char* const dpiErrorMessages[DPI_ERR_MAX - DPI_ERR_NO_ERR] = {
     "DPI-1035: size of the transaction ID is %u and cannot exceed %u", // DPI_ERR_TRANS_ID_TOO_LARGE
     "DPI-1036: size of the branch ID is %u and cannot exceed %u", // DPI_ERR_BRANCH_ID_TOO_LARGE
     "DPI-1037: column at array position %u fetched with error %u", // DPI_ERR_COLUMN_FETCH
+    "DPI-1038: unused", // DPI_ERR_1038_UNUSED
     "DPI-1039: statement was already closed", // DPI_ERR_STMT_CLOSED
     "DPI-1040: LOB was already closed", // DPI_ERR_LOB_CLOSED
     "DPI-1041: invalid character set id %d", // DPI_ERR_INVALID_CHARSET_ID
@@ -77,10 +78,13 @@ static const char* const dpiErrorMessages[DPI_ERR_MAX - DPI_ERR_NO_ERR] = {
     "DPI-1045: strings converted to numbers can only be up to 172 characters long", // DPI_ERR_NUMBER_STRING_TOO_LONG
     "DPI-1046: parameter %s cannot be a NULL pointer", // DPI_ERR_NULL_POINTER_PARAMETER
     "DPI-1047: Cannot locate a %s-bit Oracle Client library: \"%s\". See %s for help", // DPI_ERR_LOAD_LIBRARY
+    "DPI-1048: unused", // DPI_ERR_1048_UNUSED
     "DPI-1049: symbol %s not found in OCI library", // DPI_ERR_LOAD_SYMBOL
     "DPI-1050: Oracle Client library is at version %d.%d but version %d.%d or higher is needed", // DPI_ERR_ORACLE_CLIENT_TOO_OLD
+    "DPI-1051: unused", // DPI_ERR_1051_UNUSED
     "DPI-1052: unable to get NLS environment variable", // DPI_ERR_NLS_ENV_VAR_GET,
     "DPI-1053: parameter %s cannot be a NULL pointer while corresponding length parameter is non-zero", // DPI_ERR_PTR_LENGTH_MISMATCH
+    "DPI-1054: unused", // DPI_ERR_1054_UNUSED
     "DPI-1055: value is not a number (NaN) and cannot be used in Oracle numbers", // DPI_ERR_NAN
     "DPI-1056: found object of type %.*s.%.*s when expecting object of type %.*s.%.*s", // DPI_ERR_WRONG_TYPE
     "DPI-1057: buffer size of %u is too large (max %u)", // DPI_ERR_BUFFER_SIZE_TOO_LARGE
