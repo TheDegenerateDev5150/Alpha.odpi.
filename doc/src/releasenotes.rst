@@ -11,6 +11,8 @@ Version 6.1.0 (TBD)
     libraries. On Linux, determine the real path of any specified library so
     that libraries with `RPATH=$ORIGIN` will load successfully, even when a
     symbolic link is used.
+#)  Removed the restriction that prevented the parameters ``connectionClass``
+    and ``edition`` from being specified together.
 
 
 Version 6.0.0 (May 4, 2026)
