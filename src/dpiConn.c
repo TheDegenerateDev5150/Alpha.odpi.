@@ -484,7 +484,8 @@ static int dpiConn__createStandalone(dpiConn *conn,
 
     // driver name and edition are only relevant for standalone connections
     if (dpiUtils__setAttributesFromCommonCreateParams(conn->sessionHandle,
-            DPI_OCI_HTYPE_SESSION, commonParams, error) < 0)
+            DPI_OCI_HTYPE_SESSION, commonParams, conn->env->versionInfo,
+            error) < 0)
         return DPI_FAILURE;
 
     // set access token for token based authentication
@@ -498,12 +499,6 @@ static int dpiConn__createStandalone(dpiConn *conn,
     if (dpiConn__setAttributesFromCreateParams(conn, conn->sessionHandle,
             DPI_OCI_HTYPE_SESSION, credentials, commonParams, createParams,
             &used, error) < 0)
-        return DPI_FAILURE;
-
-    // set the session handle on the service context handle
-    if (dpiOci__attrSet(conn->handle, DPI_OCI_HTYPE_SVCCTX,
-            conn->sessionHandle, 0, DPI_OCI_ATTR_SESSION, "set session handle",
-            error) < 0)
         return DPI_FAILURE;
 
     // if a new password is specified, change it (this also creates the session
@@ -522,6 +517,14 @@ static int dpiConn__createStandalone(dpiConn *conn,
             authMode |= DPI_OCI_CPW_SYSDGD;
         if (createParams->authMode & DPI_MODE_AUTH_SYSKMT)
             authMode |= DPI_OCI_CPW_SYSKMT;
+
+        // OCIPasswordChange() expects the session handle to be attached to the
+        // service context before it is called.
+        if (dpiOci__attrSet(conn->handle, DPI_OCI_HTYPE_SVCCTX,
+                conn->sessionHandle, 0, DPI_OCI_ATTR_SESSION,
+                "set session handle", error) < 0)
+            return DPI_FAILURE;
+
         return dpiOci__passwordChange(conn, credentials->userName,
                 credentials->userNameLength, credentials->password,
                 credentials->passwordLength, createParams->newPassword,
@@ -535,6 +538,12 @@ static int dpiConn__createStandalone(dpiConn *conn,
     if (dpiOci__sessionBegin(conn, credentialType, authMode, error) < 0)
         return DPI_FAILURE;
     if (dpiConn__getServerCharset(conn, error) < 0)
+        return DPI_FAILURE;
+
+    // set the session handle on the service context handle
+    if (dpiOci__attrSet(conn->handle, DPI_OCI_HTYPE_SVCCTX,
+            conn->sessionHandle, 0, DPI_OCI_ATTR_SESSION, "set session handle",
+            error) < 0)
         return DPI_FAILURE;
 
     // set the statement cache size
@@ -1813,6 +1822,13 @@ int dpiConn_create(const dpiContext *context, const char *userName,
     if (!commonParams) {
         dpiContext__initCommonCreateParams(context, &localCommonParams);
         commonParams = &localCommonParams;
+    } else if (context->dpiMinorVersion == 0) {
+        // callers built with ODPI-C 6.0 use a smaller dpiCommonCreateParams
+        // structure that does not include transactionPriority.
+        dpiContext__initCommonCreateParams(context, &localCommonParams);
+        memcpy(&localCommonParams, commonParams,
+                sizeof(dpiCommonCreateParams__v60));
+        commonParams = &localCommonParams;
     }
     if (!createParams) {
         dpiContext__initConnCreateParams(&localCreateParams);
@@ -2382,6 +2398,37 @@ int dpiConn_getTransactionInProgress(dpiConn *conn, int *value)
     return dpiGen__endPublicFn(conn, status, &error);
 }
 
+//-----------------------------------------------------------------------------
+// dpiConn_getTransactionPriority() [PUBLIC]
+//   Get transaction priority associated with the connection.
+//-----------------------------------------------------------------------------
+int dpiConn_getTransactionPriority(dpiConn *conn, const char **value,
+        uint32_t *valueLength)
+{
+    dpiError error;
+    int status;
+
+    // validate parameters
+    if (dpiConn__check(conn, __func__, &error) < 0)
+        return dpiGen__endPublicFn(conn, DPI_FAILURE, &error);
+    DPI_CHECK_PTR_NOT_NULL(conn, value)
+    DPI_CHECK_PTR_NOT_NULL(conn, valueLength)
+
+    // transaction priority requires 23.26.2 for both the database and the
+    // client
+    if (dpiUtils__checkClientVersion(conn->env->versionInfo, 23, 26, 2,
+             &error) < 0)
+        return dpiGen__endPublicFn(conn, DPI_FAILURE, &error);
+    if (dpiUtils__checkDatabaseVersion(conn, 23, 26, 2, &error) < 0)
+        return dpiGen__endPublicFn(conn, DPI_FAILURE, &error);
+
+    // get the value
+    status = dpiOci__attrGet(conn->sessionHandle,
+            DPI_OCI_HTYPE_SESSION, (void*) value, valueLength,
+            DPI_OCI_ATTR_TXN_PRIORITY, "get transaction priority", &error);
+    return dpiGen__endPublicFn(conn, status, &error);
+}
+
 
 //-----------------------------------------------------------------------------
 // dpiConn_newDeqOptions() [PUBLIC]
@@ -2859,6 +2906,37 @@ int dpiConn_setStmtCacheSize(dpiConn *conn, uint32_t cacheSize)
         return dpiGen__endPublicFn(conn, DPI_FAILURE, &error);
     status = dpiOci__attrSet(conn->handle, DPI_OCI_HTYPE_SVCCTX, &cacheSize, 0,
             DPI_OCI_ATTR_STMTCACHESIZE, "set stmt cache size", &error);
+    return dpiGen__endPublicFn(conn, status, &error);
+}
+
+
+//-----------------------------------------------------------------------------
+// dpiConn_setTransactionPriority() [PUBLIC]
+//   Set transaction priority associated with the connection.
+//-----------------------------------------------------------------------------
+int dpiConn_setTransactionPriority(dpiConn *conn, const char *value,
+        uint32_t valueLength)
+{
+    dpiError error;
+    int status;
+
+    // validate parameters
+    if (dpiConn__check(conn, __func__, &error) < 0)
+        return dpiGen__endPublicFn(conn, DPI_FAILURE, &error);
+    DPI_CHECK_PTR_AND_LENGTH(conn, value)
+
+    // transaction priority requires 23.26.2 for both the database and the
+    // client
+    if (dpiUtils__checkClientVersion(conn->env->versionInfo, 23, 26, 2,
+             &error) < 0)
+        return dpiGen__endPublicFn(conn, DPI_FAILURE, &error);
+    if (dpiUtils__checkDatabaseVersion(conn, 23, 26, 2, &error) < 0)
+        return dpiGen__endPublicFn(conn, DPI_FAILURE, &error);
+
+    // set the value
+    status = dpiOci__attrSet(conn->handle, DPI_OCI_HTYPE_SVCCTX,
+            (void*) value, valueLength, DPI_OCI_ATTR_TXN_PRIORITY,
+            "set transaction priority", &error);
     return dpiGen__endPublicFn(conn, status, &error);
 }
 

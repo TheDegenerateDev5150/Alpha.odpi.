@@ -136,6 +136,9 @@ back.
     * - :func:`dpiConn_getTransactionInProgress()`
       - No
       - No relevant notes
+    * - :func:`dpiConn_getTransactionPriority()`
+      - No
+      - No relevant notes
     * - :func:`dpiConn_newDeqOptions()`
       - No
       - No relevant notes
@@ -224,6 +227,10 @@ back.
     * - :func:`dpiConn_setStmtCacheSize()`
       - No
       - No relevant notes
+    * - :func:`dpiConn_setTransactionPriority()`
+      - No
+      - The transaction priority information will be sent to the database
+        during the next call that requires a round trip to the database.
     * - :func:`dpiConn_shutdownDatabase()`
       - Yes
       - No relevant notes

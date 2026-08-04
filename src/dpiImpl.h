@@ -376,6 +376,7 @@ extern unsigned long dpiDebugLevel;
 #define DPI_OCI_ATTR_VECTOR_DATA_FORMAT             696
 #define DPI_OCI_ATTR_VECTOR_PROPERTY                697
 #define DPI_OCI_ATTR_VECTOR_SPARSE_DIMENSION        717
+#define DPI_OCI_ATTR_TXN_PRIORITY                   748
 
 // define OCI object type constants
 #define DPI_OCI_OTYPE_NAME                          1
@@ -741,6 +742,22 @@ typedef enum {
 //-----------------------------------------------------------------------------
 // old type definitions (to be dropped)
 //-----------------------------------------------------------------------------
+
+// structure used for common connection/pool creation parameters in ODPI-C
+// 6.0; retained so that ODPI-C 6.1 and higher can safely interoperate with
+// callers compiled against 6.0.
+typedef struct {
+    dpiCreateMode createMode;
+    const char *encoding;
+    const char *nencoding;
+    const char *edition;
+    uint32_t editionLength;
+    const char *driverName;
+    uint32_t driverNameLength;
+    int sodaMetadataCache;
+    uint32_t stmtCacheSize;
+    dpiAccessToken *accessToken;
+} dpiCommonCreateParams__v60;
 
 // structure used for transferring error information from ODPI-C
 typedef struct {
@@ -2317,7 +2334,7 @@ int dpiUtils__parseOracleNumber(void *oracleValue, int *isNegative,
         dpiError *error);
 int dpiUtils__setAttributesFromCommonCreateParams(void *handle,
         uint32_t handleType, const dpiCommonCreateParams *params,
-        dpiError *error);
+        dpiVersionInfo *versionInfo, dpiError *error);
 int dpiUtils__setAccessTokenAttributes(void *handle,
         dpiAccessToken *accessToken, dpiVersionInfo *versionInfo,
         dpiError *error);

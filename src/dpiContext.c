@@ -334,13 +334,22 @@ void dpiContext_getError(const dpiContext *context, dpiErrorInfo *info)
 int dpiContext_initCommonCreateParams(const dpiContext *context,
         dpiCommonCreateParams *params)
 {
+    dpiCommonCreateParams localParams;
     dpiError error;
 
     if (dpiGen__startPublicFn(context, DPI_HTYPE_CONTEXT, __func__,
             &error) < 0)
         return dpiGen__endPublicFn(context, DPI_FAILURE, &error);
     DPI_CHECK_PTR_NOT_NULL(context, params)
-    dpiContext__initCommonCreateParams(context, params);
+
+    // callers built with ODPI-C 6.0 use a smaller dpiCommonCreateParams
+    // structure that does not include transactionPriority.
+    if (context->dpiMinorVersion == 0) {
+        dpiContext__initCommonCreateParams(context, &localParams);
+        memcpy(params, &localParams, sizeof(dpiCommonCreateParams__v60));
+    } else {
+        dpiContext__initCommonCreateParams(context, params);
+    }
 
     return dpiGen__endPublicFn(context, DPI_SUCCESS, &error);
 }

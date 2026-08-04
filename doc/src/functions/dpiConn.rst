@@ -925,6 +925,33 @@ handles.
             with 0 (no transaction) or 1 (a transaction is in progress) upon
             successful completion of this function.
 
+.. function:: int dpiConn_getTransactionPriority(dpiConn* conn, \
+        const char** value, uint32_t* valueLength)
+
+    Returns the transaction priority associated with the connection.
+
+    The function returns DPI_SUCCESS for success and DPI_FAILURE for failure.
+
+    .. parameters-table::
+
+        * - ``conn``
+          - IN
+          - A reference to the connection from which the transaction priority
+            is to be retrieved. If the reference is NULL or invalid, an error
+            is returned.
+        * - ``value``
+          - OUT
+          - A pointer to the transaction priority, as a byte string in the
+            encoding used for CHAR data, which will be populated upon
+            successful completion of this function. The string returned will
+            remain valid as long as a reference to the connection is held and
+            the transaction priority is not changed by some means.
+        * - ``valueLength``
+          - OUT
+          - A pointer to the length of the transaction priority, in bytes,
+            which will be populated upon successful completion of this
+            function.
+
 .. function:: int dpiConn_newDeqOptions(dpiConn* conn, dpiDeqOptions** options)
 
     Returns a reference to a new set of dequeue options, used in dequeuing
@@ -1660,6 +1687,36 @@ handles.
         * - ``cacheSize``
           - IN
           - The new size of the statement cache, in number of statements.
+
+.. function:: int dpiConn_setTransactionPriority(dpiConn* conn, \
+        const char* value, uint32_t valueLength)
+
+    Sets the transaction priority to be used on the connection. This has the
+    same effect as the SQL statement ALTER SESSION SET TXN_PRIORITY. The value
+    will be changed when the next call requiring a round trip to the server is
+    performed. If the new transaction priority is not valid, the same error is
+    returned as when the alter session statement is executed. Setting the value
+    to an empty string resets the transaction priority to the database default.
+    See the Oracle Database documentation on
+    `TXN_PRIORITY <https://docs.oracle.com/en/database/oracle/oracle-database/26/refrn/TXN_PRIORITY.html>`__
+    for more information.
+
+    The function returns DPI_SUCCESS for success and DPI_FAILURE for failure.
+
+    .. parameters-table::
+
+        * - ``conn``
+          - IN
+          - A reference to the connection in which the transaction priority is
+            to be set. If the reference is NULL or invalid, an error is
+            returned.
+        * - ``value``
+          - IN
+          - A pointer to a byte string in the encoding used for CHAR data
+            which will be used to set the transaction priority.
+        * - ``valueLength``
+          - IN
+          - The length of the value that is to be set, in bytes.
 
 .. function:: int dpiConn_shutdownDatabase(dpiConn* conn, dpiShutdownMode mode)
 

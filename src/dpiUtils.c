@@ -559,18 +559,34 @@ int dpiUtils__parseOracleNumber(void *oracleValue, int *isNegative,
 //-----------------------------------------------------------------------------
 int dpiUtils__setAttributesFromCommonCreateParams(void *handle,
         uint32_t handleType, const dpiCommonCreateParams *params,
-        dpiError *error)
+        dpiVersionInfo *versionInfo, dpiError *error)
 {
-    if (params->driverName && params->driverNameLength > 0 &&
-            dpiOci__attrSet(handle, handleType, (void*) params->driverName,
-                    params->driverNameLength, DPI_OCI_ATTR_DRIVER_NAME,
-                    "set driver name", error) < 0)
-        return DPI_FAILURE;
-    if (params->edition && params->editionLength > 0 &&
-            dpiOci__attrSet(handle, handleType,
-                    (void*) params->edition, params->editionLength,
-                    DPI_OCI_ATTR_EDITION, "set edition", error) < 0)
-        return DPI_FAILURE;
+    // set driver name
+    if (params->driverName && params->driverNameLength > 0) {
+        if (dpiOci__attrSet(handle, handleType, (void*) params->driverName,
+                params->driverNameLength, DPI_OCI_ATTR_DRIVER_NAME,
+                "set driver name", error) < 0)
+            return DPI_FAILURE;
+    }
+
+    // set edition
+    if (params->edition && params->editionLength > 0) {
+        if (dpiOci__attrSet(handle, handleType, (void*) params->edition,
+                params->editionLength, DPI_OCI_ATTR_EDITION, "set edition",
+                error) < 0)
+            return DPI_FAILURE;
+    }
+
+    // set transaction priority (requires 23.26.2)
+    if (params->transactionPriority && params->transactionPriorityLength > 0) {
+        if (dpiUtils__checkClientVersion(versionInfo, 23, 26, 2, error) < 0)
+            return DPI_FAILURE;
+        if (dpiOci__attrSet(handle, handleType,
+                (void*) params->transactionPriority,
+                params->transactionPriorityLength, DPI_OCI_ATTR_TXN_PRIORITY,
+                "set transaction priority", error) < 0)
+            return DPI_FAILURE;
+    }
 
     return DPI_SUCCESS;
 }

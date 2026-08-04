@@ -132,7 +132,8 @@ static int dpiPool__create(dpiPool *pool, const dpiCredentials *credentials,
 
     // set context attributes
     if (dpiUtils__setAttributesFromCommonCreateParams(authInfo,
-            DPI_OCI_HTYPE_AUTHINFO, commonParams, error) < 0)
+            DPI_OCI_HTYPE_AUTHINFO, commonParams, pool->env->versionInfo,
+            error) < 0)
         return DPI_FAILURE;
 
     // set token based authentication attributes
@@ -438,6 +439,13 @@ int dpiPool_create(const dpiContext *context, const char *userName,
     // use default parameters if none provided
     if (!commonParams) {
         dpiContext__initCommonCreateParams(context, &localCommonParams);
+        commonParams = &localCommonParams;
+    } else if (context->dpiMinorVersion == 0) {
+        // callers built with ODPI-C 6.0 use a smaller dpiCommonCreateParams
+        // structure that does not include transactionPriority.
+        dpiContext__initCommonCreateParams(context, &localCommonParams);
+        memcpy(&localCommonParams, commonParams,
+                sizeof(dpiCommonCreateParams__v60));
         commonParams = &localCommonParams;
     }
     if (!createParams) {
