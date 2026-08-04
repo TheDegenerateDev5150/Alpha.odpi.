@@ -2296,7 +2296,7 @@ static int dpiOci__loadLibValidate(dpiContextCreateParams *params,
                     clientVersionInfo->portUpdateNum);
 
     // OCI version must be a minimum of 19.1
-    if (dpiUtils__checkClientVersion(clientVersionInfo, 19, 1, error) < 0)
+    if (dpiUtils__checkClientVersion(clientVersionInfo, 19, 1, 0, error) < 0)
         return DPI_FAILURE;
 
     // initialize threading capability in the OCI library
@@ -4451,7 +4451,7 @@ int dpiOci__vectorFromSparseArray(dpiVector *vector, dpiVectorInfo *info,
 {
     int status;
 
-    if (dpiUtils__checkClientVersion(vector->env->versionInfo, 23, 7,
+    if (dpiUtils__checkClientVersion(vector->env->versionInfo, 23, 7, 0,
             error) < 0)
         return DPI_FAILURE;
     DPI_OCI_LOAD_SYMBOL("OCIVectorFromSparseArray",
@@ -4491,7 +4491,7 @@ int dpiOci__vectorToSparseArray(dpiVector *vector, dpiError *error)
     uint32_t numDimensions = vector->numDimensions;
     int status;
 
-    if (dpiUtils__checkClientVersion(vector->env->versionInfo, 23, 7,
+    if (dpiUtils__checkClientVersion(vector->env->versionInfo, 23, 7, 0,
             error) < 0)
         return DPI_FAILURE;
     DPI_OCI_LOAD_SYMBOL("OCIVectorToSparseArray",

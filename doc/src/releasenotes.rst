@@ -13,6 +13,9 @@ Version 6.1.0 (TBD)
     symbolic link is used.
 #)  Removed the restriction that prevented the parameters ``connectionClass``
     and ``edition`` from being specified together.
+#)  Error messages that indicate that the database or client version are too
+    old now include the third digit to accommodate the version changes made for
+    Oracle Database 26ai.
 
 
 Version 6.0.0 (May 4, 2026)

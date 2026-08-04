@@ -2285,15 +2285,17 @@ int dpiStringList__addElement(dpiStringList *list, const char *value,
 int dpiUtils__allocateMemory(size_t numMembers, size_t memberSize,
         int clearMemory, const char *action, void **ptr, dpiError *error);
 int dpiUtils__checkClientVersion(dpiVersionInfo *versionInfo,
-        int minVersionNum, int minReleaseNum, dpiError *error);
+        int minVersionNum, int minReleaseNum, int minUpdateNum,
+        dpiError *error);
 int dpiUtils__checkClientVersionMulti(dpiVersionInfo *versionInfo,
-        int minVersionNum1, int minReleaseNum1, int minVersionNum2,
-        int minReleaseNum2, dpiError *error);
+        int minVersionNum1, int minReleaseNum1, int minUpdateNum1,
+        int minVersionNum2, int minReleaseNum2, int minUpdateNum2,
+        dpiError *error);
 int dpiUtils__checkCredentials(const char *userName, uint32_t userNameLength,
         const char *password, uint32_t passwordLength, int externalAuth,
         dpiCredentials *credentials, dpiError *error);
 int dpiUtils__checkDatabaseVersion(dpiConn *conn, int minVersionNum,
-        int minReleaseNum, dpiError *error);
+        int minReleaseNum, int minUpdateNum, dpiError *error);
 void dpiUtils__clearMemory(void *ptr, size_t length);
 int dpiUtils__ensureBuffer(size_t desiredSize, const char *action,
         void **ptr, size_t *currentSize, dpiError *error);

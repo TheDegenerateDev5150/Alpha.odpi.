@@ -792,7 +792,7 @@ static int dpiConn__getInfo(dpiConn *conn, dpiError *error)
 
     // determine the server type, if possible; it is determined last in order
     // to ensure that only completely cached information is returned
-    if (dpiUtils__checkClientVersion(conn->env->versionInfo, 23, 4,
+    if (dpiUtils__checkClientVersion(conn->env->versionInfo, 23, 4, 0,
             NULL) == DPI_SUCCESS) {
         if (dpiOci__attrGet(conn->handle, DPI_OCI_HTYPE_SVCCTX, &temp8,
                 NULL, DPI_OCI_ATTR_SERVER_TYPE, "get server type", error) < 0)
@@ -1516,7 +1516,8 @@ static int dpiConn__startSessionlessTransaction(dpiConn *conn,
     dpiOciXID *ociXid;
 
     // perform checks
-    if (dpiUtils__checkClientVersion(conn->env->versionInfo, 23, 6, error) < 0)
+    if (dpiUtils__checkClientVersion(conn->env->versionInfo, 23, 6, 0,
+            error) < 0)
         return DPI_FAILURE;
 
     // set the transaction id on the transaction, unless a transaction not
@@ -1600,7 +1601,8 @@ int dpiConn__suspendSessionlessTransaction(dpiConn *conn, uint32_t flag,
 {
     void *transactionHandle;
 
-    if (dpiUtils__checkClientVersion(conn->env->versionInfo, 23, 6, error) < 0)
+    if (dpiUtils__checkClientVersion(conn->env->versionInfo, 23, 6, 0,
+            error) < 0)
         return DPI_FAILURE;
 
     // associate a transaction handle with the connection if one is not already
@@ -2328,7 +2330,7 @@ int dpiConn_getSodaDb(dpiConn *conn, dpiSodaDb **db)
 
     if (dpiConn__check(conn, __func__, &error) < 0)
         return dpiGen__endPublicFn(conn, DPI_FAILURE, &error);
-    if (dpiUtils__checkDatabaseVersion(conn, 18, 0, &error) < 0)
+    if (dpiUtils__checkDatabaseVersion(conn, 18, 0, 0, &error) < 0)
         return dpiGen__endPublicFn(conn, DPI_FAILURE, &error);
     if (dpiGen__allocate(DPI_HTYPE_SODA_DB, conn->env, (void**) db,
             &error) < 0)

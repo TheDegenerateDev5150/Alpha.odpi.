@@ -55,14 +55,18 @@ int dpiUtils__allocateMemory(size_t numMembers, size_t memberSize,
 // minimum version that is required.
 //-----------------------------------------------------------------------------
 int dpiUtils__checkClientVersion(dpiVersionInfo *versionInfo,
-        int minVersionNum, int minReleaseNum, dpiError *error)
+        int minVersionNum, int minReleaseNum, int minUpdateNum,
+        dpiError *error)
 {
-    if (versionInfo->versionNum < minVersionNum ||
-            (versionInfo->versionNum == minVersionNum &&
-                    versionInfo->releaseNum < minReleaseNum))
+    uint32_t minFullVersionNum;
+
+    minFullVersionNum = DPI_ORACLE_VERSION_TO_NUMBER(minVersionNum,
+            minReleaseNum, minUpdateNum, 0, 0);
+    if (versionInfo->fullVersionNum < minFullVersionNum)
         return dpiError__set(error, "check Oracle Client version",
                 DPI_ERR_ORACLE_CLIENT_TOO_OLD, versionInfo->versionNum,
-                versionInfo->releaseNum, minVersionNum, minReleaseNum);
+                versionInfo->releaseNum, versionInfo->updateNum, minVersionNum,
+                minReleaseNum, minUpdateNum);
     return DPI_SUCCESS;
 }
 
@@ -73,20 +77,24 @@ int dpiUtils__checkClientVersion(dpiVersionInfo *versionInfo,
 // minimum version that is required.
 //-----------------------------------------------------------------------------
 int dpiUtils__checkClientVersionMulti(dpiVersionInfo *versionInfo,
-        int minVersionNum1, int minReleaseNum1, int minVersionNum2,
-        int minReleaseNum2, dpiError *error)
+        int minVersionNum1, int minReleaseNum1, int minUpdateNum1,
+        int minVersionNum2, int minReleaseNum2, int minUpdateNum2,
+        dpiError *error)
 {
-    if (versionInfo->versionNum < minVersionNum1 ||
-            (versionInfo->versionNum == minVersionNum1 &&
-                    versionInfo->releaseNum < minReleaseNum1) ||
+    uint32_t minFullVersionNum1, minFullVersionNum2;
+
+    minFullVersionNum1 = DPI_ORACLE_VERSION_TO_NUMBER(minVersionNum1,
+            minReleaseNum1, minUpdateNum1, 0, 0);
+    minFullVersionNum2 = DPI_ORACLE_VERSION_TO_NUMBER(minVersionNum2,
+            minReleaseNum2, minUpdateNum2, 0, 0);
+    if (versionInfo->fullVersionNum < minFullVersionNum1 ||
             (versionInfo->versionNum > minVersionNum1 &&
-                    versionInfo->versionNum < minVersionNum2) ||
-            (versionInfo->versionNum == minVersionNum2 &&
-                    versionInfo->releaseNum < minReleaseNum2))
+                    versionInfo->fullVersionNum < minFullVersionNum2))
         return dpiError__set(error, "check Oracle Client version",
                 DPI_ERR_ORACLE_CLIENT_TOO_OLD_MULTI, versionInfo->versionNum,
-                versionInfo->releaseNum, minVersionNum1, minReleaseNum1,
-                minVersionNum2, minReleaseNum2);
+                versionInfo->releaseNum, versionInfo->updateNum,
+                minVersionNum1, minReleaseNum1, minUpdateNum1,
+                minVersionNum2, minReleaseNum2, minUpdateNum2);
     return DPI_SUCCESS;
 }
 
@@ -135,16 +143,19 @@ int dpiUtils__checkCredentials(const char *userName, uint32_t userNameLength,
 // minimum version that is required.
 //-----------------------------------------------------------------------------
 int dpiUtils__checkDatabaseVersion(dpiConn *conn, int minVersionNum,
-        int minReleaseNum, dpiError *error)
+        int minReleaseNum, int minUpdateNum, dpiError *error)
 {
+    uint32_t minFullVersionNum;
+
     if (dpiConn__getServerVersion(conn, 0, error) < 0)
         return DPI_FAILURE;
-    if (conn->versionInfo.versionNum < minVersionNum ||
-            (conn->versionInfo.versionNum == minVersionNum &&
-                    conn->versionInfo.releaseNum < minReleaseNum))
+    minFullVersionNum = DPI_ORACLE_VERSION_TO_NUMBER(minVersionNum,
+            minReleaseNum, minUpdateNum, 0, 0);
+    if (conn->versionInfo.fullVersionNum < minFullVersionNum)
         return dpiError__set(error, "check Oracle Database version",
                 DPI_ERR_ORACLE_DB_TOO_OLD, conn->versionInfo.versionNum,
-                conn->versionInfo.releaseNum, minVersionNum, minReleaseNum);
+                conn->versionInfo.releaseNum, conn->versionInfo.updateNum,
+                minVersionNum, minReleaseNum, minUpdateNum);
     return DPI_SUCCESS;
 }
 
@@ -585,13 +596,13 @@ int dpiUtils__setAccessTokenAttributes(void *handle,
 
     // IAM feature only available in Oracle Client 19.14+ and 21.5+ libraries
     if (accessToken->privateKey) {
-        if (dpiUtils__checkClientVersionMulti(versionInfo, 19, 14, 21, 5,
+        if (dpiUtils__checkClientVersionMulti(versionInfo, 19, 14, 0, 21, 5, 0,
                 error) < 0)
             return DPI_FAILURE;
 
     // OAuth feature only available in Oracle Client 19.15+ and 21.7+ libraries
     } else {
-        if (dpiUtils__checkClientVersionMulti(versionInfo, 19, 15, 21, 7,
+        if (dpiUtils__checkClientVersionMulti(versionInfo, 19, 15, 0, 21, 7, 0,
                 error) < 0)
             return DPI_FAILURE;
     }

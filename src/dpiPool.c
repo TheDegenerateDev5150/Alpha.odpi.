@@ -576,8 +576,8 @@ int dpiPool_getSodaMetadataCache(dpiPool *pool, int *enabled)
     if (dpiPool__checkConnected(pool, __func__, &error) < 0)
         return dpiGen__endPublicFn(pool, DPI_FAILURE, &error);
     DPI_CHECK_PTR_NOT_NULL(pool, enabled)
-    if (dpiUtils__checkClientVersionMulti(pool->env->versionInfo, 19, 11, 21,
-            3, &error) < 0)
+    if (dpiUtils__checkClientVersionMulti(pool->env->versionInfo, 19, 11, 0,
+            21, 3, 0, &error) < 0)
         return dpiGen__endPublicFn(pool, DPI_FAILURE, &error);
     if (dpiOci__attrGet(pool->env->handle, DPI_OCI_HTYPE_ENV, enabled, NULL,
             DPI_OCI_ATTR_SODA_METADATA_CACHE, "get SODA metadata cache",
@@ -738,8 +738,8 @@ int dpiPool_setSodaMetadataCache(dpiPool *pool, int enabled)
 
     if (dpiPool__checkConnected(pool, __func__, &error) < 0)
         return dpiGen__endPublicFn(pool, DPI_FAILURE, &error);
-    if (dpiUtils__checkClientVersionMulti(pool->env->versionInfo, 19, 11, 21,
-            3, &error) < 0)
+    if (dpiUtils__checkClientVersionMulti(pool->env->versionInfo, 19, 11, 0,
+            21, 3, 0, &error) < 0)
         return dpiGen__endPublicFn(pool, DPI_FAILURE, &error);
     if (dpiOci__attrSet(pool->env->handle, DPI_OCI_HTYPE_ENV, &enabled, 0,
             DPI_OCI_ATTR_SODA_METADATA_CACHE, "set SODA metadata cache",
