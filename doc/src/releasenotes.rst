@@ -1,8 +1,8 @@
 ODPI-C Release notes
 ====================
 
-Version 6.1.0 (TBD)
--------------------
+Version 26.0.0 (TBD)
+--------------------
 
 #)  Added support for using proxy users with token authentication for
     standalone connections.

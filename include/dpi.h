@@ -68,8 +68,8 @@ extern "C" {
 #endif
 
 // define ODPI-C version information
-#define DPI_MAJOR_VERSION   6
-#define DPI_MINOR_VERSION   1
+#define DPI_MAJOR_VERSION   26
+#define DPI_MINOR_VERSION   0
 #define DPI_PATCH_LEVEL     0
 #define DPI_VERSION_SUFFIX  "b1"
 

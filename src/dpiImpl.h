@@ -743,22 +743,6 @@ typedef enum {
 // old type definitions (to be dropped)
 //-----------------------------------------------------------------------------
 
-// structure used for common connection/pool creation parameters in ODPI-C
-// 6.0; retained so that ODPI-C 6.1 and higher can safely interoperate with
-// callers compiled against 6.0.
-typedef struct {
-    dpiCreateMode createMode;
-    const char *encoding;
-    const char *nencoding;
-    const char *edition;
-    uint32_t editionLength;
-    const char *driverName;
-    uint32_t driverNameLength;
-    int sodaMetadataCache;
-    uint32_t stmtCacheSize;
-    dpiAccessToken *accessToken;
-} dpiCommonCreateParams__v60;
-
 // structure used for transferring error information from ODPI-C
 typedef struct {
     int32_t code;

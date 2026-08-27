@@ -440,13 +440,6 @@ int dpiPool_create(const dpiContext *context, const char *userName,
     if (!commonParams) {
         dpiContext__initCommonCreateParams(context, &localCommonParams);
         commonParams = &localCommonParams;
-    } else if (context->dpiMinorVersion == 0) {
-        // callers built with ODPI-C 6.0 use a smaller dpiCommonCreateParams
-        // structure that does not include transactionPriority.
-        dpiContext__initCommonCreateParams(context, &localCommonParams);
-        memcpy(&localCommonParams, commonParams,
-                sizeof(dpiCommonCreateParams__v60));
-        commonParams = &localCommonParams;
     }
     if (!createParams) {
         dpiContext__initPoolCreateParams(&localCreateParams);
