@@ -1,16 +1,19 @@
 ODPI-C Release notes
 ====================
 
-Version 26.0.0 (TBD)
---------------------
+Version 26.0.0 (September 10, 2026)
+-----------------------------------
 
-#)  Added support for using proxy users with token authentication for
-    standalone connections.
+#)  Moved to a year-based version number system. The python-oracledb major
+    version number will be the two-digit year in which that major version was
+    first released.
 #)  Added functions :func:`dpiConn_getTransactionPriority()` and
     :func:`dpiConn_setTransactionPriority()` and the members
     :member:`dpiCommonCreateParams.transactionPriority` and
     :member:`dpiCommonCreateParams.transactionPriorityLength` in order to
     support managing transaction priority session state.
+#)  Added support for using proxy users with token authentication for
+    standalone connections.
 #)  The symbolic link for `libclntsh.so` or `libclntsh.dylib` is now mandatory
     when loading ODPI-C and attempts will no longer be made to load versioned
     libraries. On Linux, determine the real path of any specified library so
