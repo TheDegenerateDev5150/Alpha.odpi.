@@ -4,9 +4,8 @@ ODPI-C Release notes
 Version 26.0.0 (September 10, 2026)
 -----------------------------------
 
-#)  Moved to a year-based version number system. The python-oracledb major
-    version number will be the two-digit year in which that major version was
-    first released.
+#)  Moved to a year-based version number system. The major version number will
+    now be the two-digit year in which that major version was first released.
 #)  Added functions :func:`dpiConn_getTransactionPriority()` and
     :func:`dpiConn_setTransactionPriority()` and the members
     :member:`dpiCommonCreateParams.transactionPriority` and
