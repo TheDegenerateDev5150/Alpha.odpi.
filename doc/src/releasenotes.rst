@@ -22,7 +22,7 @@ Version 26.0.0 (September 10, 2026)
     and ``edition`` from being specified together.
 #)  Error messages that indicate that the database or client version are too
     old now include the third digit to accommodate the version changes made for
-    Oracle Database 26ai.
+    Oracle AI Database 26ai.
 
 
 Version 6.0.0 (May 4, 2026)
